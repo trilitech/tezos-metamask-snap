@@ -1,13 +1,9 @@
 import chai, { expect } from 'chai';
-import sinonChai from 'sinon-chai';
 import chaiAsPromised from 'chai-as-promised';
-import chaiBytes from 'chai-bytes';
 import * as sinon from 'sinon';
 import { jsonOk } from '../../test/utils.test';
 import { getBalanceOfAddress } from './get-balance-of-address';
 
-chai.use(chaiBytes);
-chai.use(sinonChai);
 chai.use(chaiAsPromised);
 
 describe('Test function: getBalanceOfAddress', function () {
@@ -15,47 +11,35 @@ describe('Test function: getBalanceOfAddress', function () {
     sinon.restore();
   });
 
-  it('should fetch the balance of an address', async function () {
-    const fetchStub = sinon.stub(global, 'fetch').returns(jsonOk('1000000'));
+  it('returns a validated balance including a genuine zero', async function () {
+    const fetchStub = sinon
+      .stub(global, 'fetch')
+      .callsFake(async () => jsonOk('1000000'));
+    expect(await getBalanceOfAddress('tz1...', 'https://test.com/')).to.equal(
+      '1000000',
+    );
 
-    const response = await getBalanceOfAddress('tz1...', 'https://test.com/');
-
-    expect(response).to.equal('1000000');
-    expect(fetchStub.callCount).to.equal(1);
-    expect(fetchStub.firstCall.args[0]).to.deep.equal(
+    expect(fetchStub.firstCall.args[0]).to.equal(
       'https://test.com/chains/main/blocks/head/context/contracts/tz1.../balance',
     );
-  });
-
-  it('should return 0 balance for unknown address', async function () {
-    const fetchStub = sinon
-      .stub(global, 'fetch')
-      .rejects(new Error('Address does not exist'));
-
-    const response = await getBalanceOfAddress(
-      'tz1unknown...',
-      'https://test.com/',
-    );
-
-    expect(response).to.equal('0');
-    expect(fetchStub.callCount).to.equal(1);
-    expect(fetchStub.firstCall.args[0]).to.deep.equal(
-      'https://test.com/chains/main/blocks/head/context/contracts/tz1unknown.../balance',
+    fetchStub.callsFake(async () => jsonOk('0'));
+    expect(await getBalanceOfAddress('tz1...', 'https://test.com/')).to.equal(
+      '0',
     );
   });
 
-  it('should return return an error if response is not 200 or 404', async function () {
-    const fetchStub = sinon
-      .stub(global, 'fetch')
-      .rejects({ response: { status: 500 } });
-
+  it('never turns network failures, HTTP errors or malformed balances into zero', async function () {
+    const fetchStub = sinon.stub(global, 'fetch').rejects(new Error('offline'));
     await expect(
       getBalanceOfAddress('tz1...', 'https://test.com/'),
-    ).to.be.rejectedWith('Error fetching balance');
-
-    expect(fetchStub.callCount).to.equal(1);
-    expect(fetchStub.firstCall.args[0]).to.deep.equal(
-      'https://test.com/chains/main/blocks/head/context/contracts/tz1.../balance',
-    );
+    ).to.be.rejectedWith('RPC connection failed');
+    fetchStub.callsFake(async () => new Response('Not found', { status: 404 }));
+    await expect(
+      getBalanceOfAddress('tz1...', 'https://test.com/'),
+    ).to.be.rejectedWith('HTTP 404');
+    fetchStub.callsFake(async () => jsonOk({ error: 'unavailable' }));
+    await expect(
+      getBalanceOfAddress('tz1...', 'https://test.com/'),
+    ).to.be.rejectedWith('Invalid RPC balance');
   });
 });

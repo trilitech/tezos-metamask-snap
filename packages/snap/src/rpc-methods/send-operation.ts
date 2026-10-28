@@ -1,6 +1,8 @@
 import { panel, heading, text, copyable, divider } from '@metamask/snaps-ui';
 import { getWallet } from '../utils/get-wallet';
 import { prepareAndSign } from '../utils/prepare-and-sign';
+import { FALLBACK_NODE_URL } from '../constants';
+import { usesDefaultRpc } from '../utils/rpc';
 import { getRpc } from '../utils/get-rpc';
 
 export const tezosSendOperation = async (params: any) => {
@@ -17,8 +19,16 @@ export const tezosSendOperation = async (params: any) => {
         text('Do you want to sign the following payload?'),
         copyable(JSON.stringify(payload, null, 2)),
         divider(),
-        text(`The operation will be submit to the following node:`),
+        text(`The operation will be submitted to the following node:`),
         copyable(rpc.nodeUrl),
+        ...(usesDefaultRpc(rpc)
+          ? [
+              text(
+                'If preparation fails, this mainnet provider may prepare and submit the operation:',
+              ),
+              copyable(FALLBACK_NODE_URL),
+            ]
+          : []),
       ]),
     },
   });
@@ -27,5 +37,5 @@ export const tezosSendOperation = async (params: any) => {
     throw new Error('User rejected');
   }
 
-  return { opHash: await prepareAndSign(payload, wallet, rpc.nodeUrl) };
+  return { opHash: await prepareAndSign(payload, wallet, rpc) };
 };

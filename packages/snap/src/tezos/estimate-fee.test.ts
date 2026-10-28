@@ -132,11 +132,11 @@ describe('Test function: estimateFee', function () {
     expect(fetchStub.callCount).to.equal(2, 'fetchStub');
     expect(fetchHeaderStub.callCount).to.equal(1, 'fetchHeaderStub');
     expect(fetchHeaderStub.firstCall.args[0]).to.deep.equal(
-      'https://blockchain-nodes.papers.tech/tezos/metamask/chains/main/blocks/head/header',
+      'https://tezos-mainnet.octez.io/chains/main/blocks/head/header',
     );
     expect(fetchOperationStub.callCount).to.equal(1, 'fetchOperationStub');
     expect(fetchOperationStub.firstCall.args[0]).to.deep.equal(
-      'https://blockchain-nodes.papers.tech/tezos/metamask/chains/main/blocks/head/helpers/scripts/run_operation',
+      'https://tezos-mainnet.octez.io/chains/main/blocks/head/helpers/scripts/run_operation',
     );
   });
 

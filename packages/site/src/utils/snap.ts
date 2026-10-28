@@ -139,7 +139,7 @@ export const sendSetRpc = async () => {
         method: 'tezos_setRpc',
         params: {
           network: 'mainnet', // "mainnet" | "ghostnet"
-          rpcUrl: 'https://mainnet.api.tez.ie',
+          nodeUrl: 'https://tezos-mainnet.octez.io/',
         },
       },
     },

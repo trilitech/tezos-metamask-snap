@@ -1,5 +1,6 @@
 import { localForger } from '@taquito/local-forging';
 import BigNumber from 'bignumber.js';
+import { rpcRequest, RpcUnavailableError } from '../utils/rpc';
 import { createRevealOperation } from './create-reveal-operation';
 import {
   TezosOperationType,
@@ -139,26 +140,30 @@ export const prepareOperations = async (
   let counter: BigNumber = new BigNumber(1);
   const operations: TezosOperation[] = [];
 
-  const results = await Promise.all(
-    (
-      await Promise.all([
-        fetch(
-          `${nodeUrl}chains/main/blocks/head/context/contracts/${address}/counter`,
-        ),
-        fetch(`${nodeUrl}chains/main/blocks/head~2/hash`),
-        fetch(
-          `${nodeUrl}chains/main/blocks/head/context/contracts/${address}/manager_key`,
-        ),
-      ]).catch((error) => {
-        throw new Error(error);
-      })
-    ).map((res) => res.json()),
-  );
-
-  counter = new BigNumber(results[0]).plus(1);
-  const branch = results[1];
-
-  const accountManager: { key: string } = results[2];
+  // Pin the current head so recently included counters/reveals are not missed.
+  const branch = await rpcRequest(`${nodeUrl}chains/main/blocks/head/hash`);
+  if (
+    typeof branch !== 'string' ||
+    !/^B[1-9A-HJ-NP-Za-km-z]{50}$/u.test(branch)
+  ) {
+    throw new RpcUnavailableError('Invalid RPC branch');
+  }
+  const [storedCounter, accountManager] = await Promise.all([
+    rpcRequest(
+      `${nodeUrl}chains/main/blocks/${branch}/context/contracts/${address}/counter`,
+    ),
+    rpcRequest(
+      `${nodeUrl}chains/main/blocks/${branch}/context/contracts/${address}/manager_key`,
+    ),
+  ]);
+  if (
+    typeof storedCounter !== 'string' ||
+    !/^\d+$/u.test(storedCounter) ||
+    (accountManager !== null && typeof accountManager !== 'string')
+  ) {
+    throw new RpcUnavailableError('Invalid RPC account response');
+  }
+  counter = new BigNumber(storedCounter).plus(1);
 
   const hasRevealInOperationRequests = operationRequests.some(
     (request: TezosOperation) => request.kind === TezosOperationType.REVEAL,
@@ -184,7 +189,7 @@ export const prepareOperations = async (
       let receivingBalance: BigNumber | undefined;
       if (recipient?.toLowerCase().startsWith('tz')) {
         receivingBalance = new BigNumber(
-          await getBalanceOfAddress(recipient, nodeUrl),
+          await getBalanceOfAddress(recipient, nodeUrl, branch),
         );
       }
 
@@ -265,6 +270,8 @@ export const prepareOperations = async (
     wrappedOperation,
     nodeUrl,
     overrideParameters,
+    undefined,
+    branch,
   );
 
   return await localForger.forge(estimated as any);

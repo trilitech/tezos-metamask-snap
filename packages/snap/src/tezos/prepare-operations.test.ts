@@ -32,17 +32,17 @@ const setupFetchStubs = (address: string, blockHash: string) => {
 
   const fetchCounterStub = fetchStub
     .withArgs(
-      `${DEFAULT_NODE_URL}chains/main/blocks/head/context/contracts/${address}/counter`,
+      `${DEFAULT_NODE_URL}chains/main/blocks/${blockHash}/context/contracts/${address}/counter`,
     )
     .returns(jsonOk('13186806'));
 
   const fetchHeadStub = fetchStub
-    .withArgs(`${DEFAULT_NODE_URL}chains/main/blocks/head~2/hash`)
+    .withArgs(`${DEFAULT_NODE_URL}chains/main/blocks/head/hash`)
     .returns(jsonOk(blockHash));
 
   const fetchManagerStub = fetchStub
     .withArgs(
-      `${DEFAULT_NODE_URL}chains/main/blocks/head/context/contracts/${address}/manager_key`,
+      `${DEFAULT_NODE_URL}chains/main/blocks/${blockHash}/context/contracts/${address}/manager_key`,
     )
     .returns(jsonOk('edpkuwYWCugiYG7nMnVUdopFmyc3sbMSiLqsJHTQgGtVhtSdLSw6HG'));
 
@@ -76,19 +76,19 @@ const assertPrepareOperationResponse = ({
 
   expect(fetchCounterStub.callCount).to.equal(1);
   expect(fetchCounterStub.firstCall.args[0]).to.deep.equal(
-    'https://blockchain-nodes.papers.tech/tezos/metamask/chains/main/blocks/head/context/contracts/tz1UNer1ijeE9ndjzSszRduR3CzX49hoBUB3/counter',
+    'https://tezos-mainnet.octez.io/chains/main/blocks/BLbfxzLVe4Wu25Wmz3MoDWp8c6HmEwKxfR3MC86FHiK12zNp4WK/context/contracts/tz1UNer1ijeE9ndjzSszRduR3CzX49hoBUB3/counter',
     'fetchCounterStub',
   );
 
   expect(fetchHeadStub.callCount).to.equal(1);
   expect(fetchHeadStub.firstCall.args[0]).to.deep.equal(
-    'https://blockchain-nodes.papers.tech/tezos/metamask/chains/main/blocks/head~2/hash',
+    'https://tezos-mainnet.octez.io/chains/main/blocks/head/hash',
     'fetchHeadStub',
   );
 
   expect(fetchManagerStub.callCount).to.equal(1);
   expect(fetchManagerStub.firstCall.args[0]).to.deep.equal(
-    'https://blockchain-nodes.papers.tech/tezos/metamask/chains/main/blocks/head/context/contracts/tz1UNer1ijeE9ndjzSszRduR3CzX49hoBUB3/manager_key',
+    'https://tezos-mainnet.octez.io/chains/main/blocks/BLbfxzLVe4Wu25Wmz3MoDWp8c6HmEwKxfR3MC86FHiK12zNp4WK/context/contracts/tz1UNer1ijeE9ndjzSszRduR3CzX49hoBUB3/manager_key',
     'fetchManagerStub',
   );
 

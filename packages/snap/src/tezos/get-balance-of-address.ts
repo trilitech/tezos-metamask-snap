@@ -1,23 +1,17 @@
-import BigNumber from 'bignumber.js';
+import { rpcRequest, RpcUnavailableError } from '../utils/rpc';
 
 export const getBalanceOfAddress = async (
   address: string,
   nodeUrl: string,
-  _data?: any,
+  block = 'head',
 ): Promise<string> => {
-  let balance: BigNumber = new BigNumber(0);
-
-  try {
-    const data = await fetch(
-      `${nodeUrl}chains/main/blocks/head/context/contracts/${address}/balance`,
-    ).then((res) => res.json());
-    balance = balance.plus(new BigNumber(data));
-  } catch (error: any) {
-    // if node returns 404 (which means 'no account found'), go with 0 balance
-    if (error.response && error.response.status !== 404) {
-      throw new Error('Error fetching balance');
-    }
+  const data = await rpcRequest(
+    `${nodeUrl}chains/main/blocks/${block}/context/contracts/${address}/balance`,
+  );
+  // Unallocated implicit accounts return "0". An HTTP 404 alone is not proof
+  // of a zero balance (it can also be a proxy or missing-block response).
+  if (typeof data !== 'string' || !/^\d+$/u.test(data)) {
+    throw new RpcUnavailableError('Invalid RPC balance');
   }
-
-  return balance.toString(10);
+  return data;
 };

@@ -1,26 +1,14 @@
 import { panel, heading, text, copyable, divider } from '@metamask/snaps-ui';
-import { Network, SnapStorage } from '../types';
+import { SnapStorage } from '../types';
+import { normalizeRpcUrl, verifyRpc } from '../utils/rpc';
 
 export const tezosSetRpc = async (params: any) => {
-  const { network, nodeUrl }: { network: Network; nodeUrl: string } = params;
-
-  if (!nodeUrl.startsWith('https://')) {
-    throw new Error('RPC URL needs to start with https://');
+  const { network, nodeUrl } = params ?? {};
+  const normalisedNodeUrl = normalizeRpcUrl(nodeUrl);
+  if (!['mainnet', 'ghostnet', 'shadownet', 'custom'].includes(network)) {
+    throw new Error('Unsupported RPC network');
   }
-
-  const normalisedNodeUrl = `${nodeUrl}${nodeUrl.endsWith('/') ? '' : '/'}`;
-
-  const header = await fetch(
-    `${normalisedNodeUrl}chains/main/blocks/head/header`,
-  )
-    .then((res) => res.json())
-    .catch(() => {
-      throw new Error('Invalid RPC URL');
-    });
-
-  if (!header.hash || !header.chain_id) {
-    throw new Error('Invalid RPC response');
-  }
+  await verifyRpc(normalisedNodeUrl, network);
 
   const approved = await snap.request({
     method: 'snap_dialog',

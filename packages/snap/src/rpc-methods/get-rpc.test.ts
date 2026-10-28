@@ -20,10 +20,13 @@ describe('Test function: getRpc', function () {
       network: 'mainnet' as const,
       nodeUrl: 'https://mainnet.tezos.com/',
     };
-    sinon.stub(getRpcMethods, 'getRpc').returns(Promise.resolve(data));
+    sinon
+      .stub(getRpcMethods, 'getRpc')
+      .returns(Promise.resolve({ ...data, useDefault: true }));
 
     const response = await tezosGetRpc();
 
+    expect(response).to.deep.equal(data);
     expect(response.network).to.equal(data.network);
     expect(response.nodeUrl).to.equal(data.nodeUrl);
   });

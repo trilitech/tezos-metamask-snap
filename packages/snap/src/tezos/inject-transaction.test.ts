@@ -16,14 +16,18 @@ describe('Test function: injectTransaction', function () {
   });
 
   it('should inject a transaction', async function () {
-    const fetchStub = sinon.stub(global, 'fetch').returns(jsonOk('op...'));
+    const fetchStub = sinon
+      .stub(global, 'fetch')
+      .returns(jsonOk('ooNDvTkYWi9ZkmEvyGnj3DpXzGFtLbek4MB8Mc6ZX2bPPeqMprB'));
 
     const response = await injectTransaction(
       'rawTxPayload',
       'https://test.com/',
     );
 
-    expect(response).to.equal('op...');
+    expect(response).to.equal(
+      'ooNDvTkYWi9ZkmEvyGnj3DpXzGFtLbek4MB8Mc6ZX2bPPeqMprB',
+    );
     expect(fetchStub.callCount).to.equal(1);
     expect(fetchStub.firstCall.args[0]).to.deep.equal(
       'https://test.com/injection/operation?chain=main',
@@ -39,7 +43,7 @@ describe('Test function: injectTransaction', function () {
 
     await expect(
       injectTransaction('invalidPayload', 'https://test.com/'),
-    ).to.be.rejectedWith('Node returned an error');
+    ).to.be.rejectedWith('Broadcast outcome unknown');
 
     expect(fetchStub.callCount).to.equal(1);
     expect(fetchStub.firstCall.args[0]).to.deep.equal(
@@ -47,5 +51,15 @@ describe('Test function: injectTransaction', function () {
     );
     expect(fetchStub.firstCall.args[1]?.method).to.deep.equal('POST');
     expect(fetchStub.firstCall.args[1]?.body).to.deep.equal('"invalidPayload"');
+  });
+
+  it('surfaces an invalid success response as uncertain and never retries it', async function () {
+    const fetchStub = sinon
+      .stub(global, 'fetch')
+      .returns(jsonOk({ error: 'unexpected response' }));
+    await expect(
+      injectTransaction('signedBytes', 'https://test.com/'),
+    ).to.be.rejectedWith('Broadcast outcome unknown');
+    expect(fetchStub.callCount).to.equal(1);
   });
 });

@@ -1,5 +1,6 @@
 import { localForger } from '@taquito/local-forging';
 import BigNumber from 'bignumber.js';
+import { rpcRequest, RpcUnavailableError } from '../utils/rpc';
 import {
   TezosWrappedOperation,
   TezosOperationType,
@@ -149,6 +150,7 @@ export const estimateAndReplaceLimitsAndFee = async (
   nodeUrl: string,
   overrideParameters = true,
   startingCounter?: BigNumber,
+  blockId = 'head',
 ): Promise<TezosWrappedOperation> => {
   // Simulation requires a signature, but it doesn't have to be valid.
   const fakeSignature =
@@ -182,9 +184,12 @@ export const estimateAndReplaceLimitsAndFee = async (
     return { ...operation, gas_limit: gasLimit, counter };
   });
 
-  const block: { chain_id: string } = await fetch(
-    `${nodeUrl}chains/main/blocks/head/header`,
-  ).then((res) => res.json());
+  const block: { chain_id: string } = await rpcRequest(
+    `${nodeUrl}chains/main/blocks/${blockId}/header`,
+  );
+  if (typeof block?.chain_id !== 'string') {
+    throw new RpcUnavailableError('Invalid RPC chain ID');
+  }
   const body = {
     chain_id: block.chain_id,
     operation: {
@@ -197,18 +202,20 @@ export const estimateAndReplaceLimitsAndFee = async (
     tezosWrappedOperation as any,
   );
 
-  const response: RunOperationResponse = await fetch(
-    `${nodeUrl}chains/main/blocks/head/helpers/scripts/run_operation`,
+  const response: RunOperationResponse = await rpcRequest(
+    `${nodeUrl}chains/main/blocks/${blockId}/helpers/scripts/run_operation`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     },
-  )
-    .then((res) => res.json())
-    .catch((runOperationError: Error) => {
-      throw runOperationError;
-    });
+  );
+  if (
+    !Array.isArray(response?.contents) ||
+    response.contents.some((content) => !content?.metadata)
+  ) {
+    throw new RpcUnavailableError('Invalid RPC simulation response');
+  }
 
   if (tezosWrappedOperation.contents.length !== response.contents.length) {
     throw new Error(
